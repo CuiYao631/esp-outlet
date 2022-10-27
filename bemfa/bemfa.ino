@@ -1,11 +1,14 @@
 /*
  HomeKit + Bilnker WIFI 控制插座
  支持小爱同学控制和苹果 HomeKit 控制 
+
+
+ Bilnker 和 巴发云 考虑接入一个！
 */
+
 
 #include <Arduino.h>
 #include <arduino_homekit_server.h>
-//#include "wifi_info.h"
 #include <EasyButton.h>
 #include "wifi_info.h"
 
@@ -21,6 +24,8 @@ int inputValue = 0;
 #define LOG_D(fmt, ...)   printf_P(PSTR(fmt "\n") , ##__VA_ARGS__);
 
 void setup() {
+ 
+  
 	Serial.begin(115200);
   //初始化按键
   button.begin();
@@ -34,16 +39,12 @@ void setup() {
   // 在首次运行此新的HomeKit示例时删除以前的HomeKit配对存储
 	//homekit_storage_reset(); 
 	my_homekit_setup();
-
-
  
 }
 
 void loop() {
   // 持续更新按钮状态。
   button.read();
-  //检查wifi是否正常
-  doWiFiTick();
   // 持续更新homekit状态
   my_homekit_loop();
 	delay(10);
@@ -92,7 +93,6 @@ void onPressed() {
 // 长按事件函数
 void onPressedForDuration() {
     
-    restoreFactory();
     Serial.println("wifi_reset");
     homekit_storage_reset(); 
     Serial.println("homekit_storage_reset");
