@@ -1,122 +1,131 @@
 /*
- HomeKit + Bilnker WIFI 控制插座
- 支持小爱同学控制和苹果 HomeKit 控制 
+ * @Author: CuiYao
+ * @Date: 2022-10-27 09:45:56
+ * @LastEditors: CuiYao
+ * @LastEditTime: 2022-10-27 15:56:09
+ * @FilePath: /esp-outlet/blinker/blinker.ino
+ */
 
-
- Bilnker 和 巴发云 考虑接入一个！
-*/
-
-
-#include <Arduino.h>
-#include <arduino_homekit_server.h>
+#define BLINKER_WIFI
+#define BLINKER_MIOT_LIGHT  //支持小爱开关LED
+#include <Blinker.h>
 #include <EasyButton.h>
+#include <BGWiFiConfig.h>
 #include "wifi_info.h"
+#define LED 2         //板子上的灯
+#define BUTTON_PIN 0  //Button PIN
 
+int duration = 2000;  //长按触发时间
+int counter = 0;
 
-//Button PIN
-#define BUTTON_PIN 0
-//长按触发时间
-int duration = 2000;
-//声明按钮
-EasyButton button(BUTTON_PIN);
-int inputValue = 0;
+BGWiFiConfig wifipw;  //声明BGWiFiConfig
 
-#define LOG_D(fmt, ...)   printf_P(PSTR(fmt "\n") , ##__VA_ARGS__);
+EasyButton button(BUTTON_PIN);  //声明按钮
 
-void setup() {
- 
+BlinkerButton Button1("btn-abc");  // 新建blinker组件对象、注意：要和APP组件’数据键名’一致
+
+/*
+ *按下BlinkerAPP按键即会执行该函数
+ */
+void button1_callback(const String& state) {
+  BLINKER_LOG("get button state: ", state);
+  digitalWrite(LED, !digitalRead(LED));
+  //Button1.vibrate();
+}
+
+/*
+ *小爱电源类操作的回调函数:
+ *当小爱同学向设备发起控制, 设备端需要有对应控制处理函数
+ */
+void miotPowerState(const String& state) {
+  BLINKER_LOG("need set power state: ", state);
+
+  if (state == BLINKER_CMD_ON) {
+    digitalWrite(LED_BUILTIN, LOW);
+
+    BlinkerMIOT.powerState("on");
+    BlinkerMIOT.print();
+  } else if (state == BLINKER_CMD_OFF) {
+    digitalWrite(LED_BUILTIN, HIGH);
+
+    BlinkerMIOT.powerState("off");
+    BlinkerMIOT.print();
+  }
+}
+
+void dataRead(const String& data) {
+  BLINKER_LOG("Blinker readString: ", data);
   
-	Serial.begin(115200);
-  //初始化按键
-  button.begin();
+  Blinker.vibrate();
 
-  //定义按键单按事件回调
-  button.onPressed(onPressed);
-  //定义按键长按事件回调
-  button.onPressedFor(duration, onPressedForDuration);
-  //连接WIFI
-	wifi_connect();
-  // 在首次运行此新的HomeKit示例时删除以前的HomeKit配对存储
-	//homekit_storage_reset(); 
-	my_homekit_setup();
- 
-}
+  uint32_t BlinkerTime = millis();
 
-void loop() {
-  // 持续更新按钮状态。
-  button.read();
-  // 持续更新homekit状态
-  my_homekit_loop();
-	delay(10);
-}
-
-
-
-
-//==============================
-// HomeKit setup and loop
-//==============================
-
-// access your HomeKit characteristics defined in my_accessory.c
-extern "C" homekit_server_config_t config;
-extern "C" homekit_characteristic_t cha_outlet_on;
-
-static uint32_t next_heap_millis = 0;
-
-#define PIN_SWITCH 2
-
-//Called when the switch value is changed by iOS Home APP
-void cha_switch_on_setter(const homekit_value_t value) {
-	bool on = value.bool_value;
-	cha_outlet_on.value.bool_value = on;	//sync the value
-	LOG_D("Switch: %s", on ? "ON" : "OFF");
-	digitalWrite(PIN_SWITCH, on ? LOW : HIGH);
+  Blinker.print("millis", BlinkerTime);
 }
 
 // 单按事件函数
 void onPressed() {
-  Serial.println("Button has been pressed!");
-  inputValue = digitalRead(PIN_SWITCH);
-  
-  if (inputValue==LOW){
-    Serial.println("OFF");
-    cha_outlet_on.value.bool_value=false;
-     homekit_characteristic_notify(&cha_outlet_on, cha_outlet_on.value);
-     digitalWrite(PIN_SWITCH, HIGH);
-  }else{
-    Serial.println("ON");
-    cha_outlet_on.value.bool_value=true;
-     homekit_characteristic_notify(&cha_outlet_on, cha_outlet_on.value);
-     digitalWrite(PIN_SWITCH, LOW);
-  }
 }
 // 长按事件函数
 void onPressedForDuration() {
-    
-    Serial.println("wifi_reset");
-    homekit_storage_reset(); 
-    Serial.println("homekit_storage_reset");
-    system_restart();
-    Serial.println(" system_restart");
+}
+/*
+ * 初始化WiFI
+ */
+void initWifi() {
+  wifipw.offConnectWiFi(true);
+  wifipw.setZDYhtml(Html);
+  wifipw.setZDYhtmlret(Htmlret);
+  wifipw.setNumUMSG(1);
+  wifipw.begin();
 }
 
-void my_homekit_setup() {
-	pinMode(PIN_SWITCH, OUTPUT);
-	digitalWrite(PIN_SWITCH, HIGH);
-
-	cha_outlet_on.setter = cha_switch_on_setter;
-  
-	arduino_homekit_setup(&config);
+/*
+ * 初始化Blinker
+ */
+void initBlinker() {
+  if (wifipw.OK()) {
+    Serial.println(">>> blinker start debug <<<");
+    Serial.println(wifipw.readUMSG(1));
+    Serial.println(wifipw.readWiFi(0));
+    Serial.println(wifipw.readWiFi(1));
+    Serial.println(">>> end <<<");
+    //DeBug
+    BLINKER_DEBUG.stream(Serial);
+    //初始化IO
+    pinMode(LED, OUTPUT);
+    //连接wifi
+    Blinker.begin(wifipw.readUMSG(1).c_str(), wifipw.readWiFi(0).c_str(), wifipw.readWiFi(1).c_str());
+    //注册读取状态事件
+    Blinker.attachData(dataRead);
+    //注册按钮
+    Button1.attach(button1_callback);
+    //小爱同学务必在回调函数中反馈该控制状态
+    //注册回调函数
+    BlinkerMIOT.attachPowerState(miotPowerState);
+  }
 }
+/*
+ *初始化函数
+ */
+void setup() {
+  // 初始化串口，并开启调试信息，调试用可以删除
+  Serial.begin(115200);
 
-void my_homekit_loop() {
-	arduino_homekit_loop();
-	const uint32_t t = millis();
-	if (t > next_heap_millis) {
-		// show heap info every 5 seconds
-		next_heap_millis = t + 5 * 1000;
-		LOG_D("Free heap: %d, HomeKit clients: %d",
-				ESP.getFreeHeap(), arduino_homekit_connected_clients_count());
-
-	}
+  //初始化WIFI
+  initWifi();
+  //初始化Blinker
+  initBlinker();
+  //定义按键单按事件回调
+  button.onPressed(onPressed);
+  //定义按键长按事件回调
+  button.onPressedFor(duration, onPressedForDuration);
+}
+/*
+ * Loop函数
+ */
+void loop() {
+  wifipw.Loop();
+  if (wifipw.OK())
+    Blinker.run();
 }
