@@ -1,13 +1,13 @@
 /*
- * @Author: CuiYao
- * @Date: 2022-10-27 09:45:56
+   @Author: CuiYao
+   @Date: 2022-10-27 09:45:56
  * @LastEditors: CuiYao
- * @LastEditTime: 2022-10-27 15:56:09
+ * @LastEditTime: 2022-10-28 09:23:28
  * @FilePath: /esp-outlet/blinker/blinker.ino
- */
+*/
 
 #define BLINKER_WIFI
-#define BLINKER_MIOT_LIGHT  //支持小爱开关LED
+#define BLINKER_MIOT_OUTLET  //支持小爱开关插座
 #include <Blinker.h>
 #include <EasyButton.h>
 #include <BGWiFiConfig.h>
@@ -16,62 +16,92 @@
 #define BUTTON_PIN 0  //Button PIN
 
 int duration = 2000;  //长按触发时间
-int counter = 0;
-
+int inputValue = 0;
 BGWiFiConfig wifipw;  //声明BGWiFiConfig
-
 EasyButton button(BUTTON_PIN);  //声明按钮
-
 BlinkerButton Button1("btn-abc");  // 新建blinker组件对象、注意：要和APP组件’数据键名’一致
 
 /*
- *按下BlinkerAPP按键即会执行该函数
- */
+  按下BlinkerAPP按键即会执行该函数
+*/
 void button1_callback(const String& state) {
   BLINKER_LOG("get button state: ", state);
-  digitalWrite(LED, !digitalRead(LED));
-  //Button1.vibrate();
+
+  inputValue = digitalRead(LED);
+  if (inputValue == LOW) {
+    digitalWrite(LED, HIGH);
+    updateStateForOFF();
+  } else {
+    digitalWrite(LED, LOW);
+    updateStateForON();
+  }
+  Blinker.vibrate();
+}
+/*
+ * 更新反馈状态为ON
+ */
+void updateStateForON() {
+  Serial.println("on");          //串口打印状态
+  Button1.print("on");           //反馈按键状态
+  BlinkerMIOT.powerState("on");  //向小爱反馈电源状态
+  BlinkerMIOT.print();           //将以上属性发送出去, 务必最后调用该函数
+}
+/*
+ * 更新反馈状态为OFF
+ */
+void updateStateForOFF() {
+  Serial.println("off");          //串口打印状态
+  Button1.print("off");           //反馈按键状态
+  BlinkerMIOT.powerState("off");  //向小爱反馈电源状态
+  BlinkerMIOT.print();            //将以上属性发送出去, 务必最后调用该函数
 }
 
+
 /*
- *小爱电源类操作的回调函数:
- *当小爱同学向设备发起控制, 设备端需要有对应控制处理函数
- */
+  小爱电源类操作的回调函数:
+  当小爱同学向设备发起控制, 设备端需要有对应控制处理函数
+*/
 void miotPowerState(const String& state) {
   BLINKER_LOG("need set power state: ", state);
 
   if (state == BLINKER_CMD_ON) {
-    digitalWrite(LED_BUILTIN, LOW);
-
-    BlinkerMIOT.powerState("on");
-    BlinkerMIOT.print();
+    digitalWrite(LED, LOW);
+    updateStateForON();
   } else if (state == BLINKER_CMD_OFF) {
-    digitalWrite(LED_BUILTIN, HIGH);
-
-    BlinkerMIOT.powerState("off");
-    BlinkerMIOT.print();
+    digitalWrite(LED, HIGH);
+    updateStateForOFF();
   }
 }
 
 void dataRead(const String& data) {
   BLINKER_LOG("Blinker readString: ", data);
-  
   Blinker.vibrate();
-
   uint32_t BlinkerTime = millis();
-
   Blinker.print("millis", BlinkerTime);
 }
 
 // 单按事件函数
 void onPressed() {
+  Serial.println("Button has been pressed!");
+  inputValue = digitalRead(LED);
+  if (inputValue == LOW) {
+    digitalWrite(LED, HIGH);
+    updateStateForOFF();
+  } else {
+    digitalWrite(LED, LOW);
+    updateStateForON();
+  }
+  Blinker.vibrate();
 }
 // 长按事件函数
 void onPressedForDuration() {
+  Serial.println("ClearWiFi!");
+  wifipw.clearWiFi();
 }
+
 /*
- * 初始化WiFI
- */
+   初始化WiFI
+*/
 void initWifi() {
   wifipw.offConnectWiFi(true);
   wifipw.setZDYhtml(Html);
@@ -81,8 +111,8 @@ void initWifi() {
 }
 
 /*
- * 初始化Blinker
- */
+   初始化Blinker
+*/
 void initBlinker() {
   if (wifipw.OK()) {
     Serial.println(">>> blinker start debug <<<");
@@ -105,9 +135,10 @@ void initBlinker() {
     BlinkerMIOT.attachPowerState(miotPowerState);
   }
 }
+
 /*
- *初始化函数
- */
+  初始化函数
+*/
 void setup() {
   // 初始化串口，并开启调试信息，调试用可以删除
   Serial.begin(115200);
@@ -122,10 +153,12 @@ void setup() {
   button.onPressedFor(duration, onPressedForDuration);
 }
 /*
- * Loop函数
- */
+   Loop函数
+*/
 void loop() {
   wifipw.Loop();
   if (wifipw.OK())
     Blinker.run();
+  // 持续更新按钮状态。
+  button.read();
 }
