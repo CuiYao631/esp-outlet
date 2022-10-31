@@ -14,7 +14,8 @@ const char* password = STAPSK;
 ESP8266WebServer server(80);
 bool LED_Flag = false;
 String str = 
-"<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><meta name=\"viewport\"content=\"width=device-width, initial-scale=1.0\"><meta http-equiv=\"X-UA-Compatible\"content=\"ie=edge\"><title>不知名up的ESP8266网页配网</title></head><body><form name=\"my\">WiFi名称：<input type=\"text\"name=\"s\"placeholder=\"请输入您WiFi的名称\"id=\"aa\"><br>WiFi密码：<input type=\"text\"name=\"p\"placeholder=\"请输入您WiFi的密码\"id=\"bb\"><br><input type=\"button\"value=\"连接\"onclick=\"wifi()\"></form><script language=\"javascript\">function wifi(){var ssid=my.s.value;var password=bb.value;var xmlhttp=new XMLHttpRequest();xmlhttp.open(\"GET\",\"/HandleVal?ssid=\"+ssid+\"&password=\"+password,true);xmlhttp.send()}</script></body></html>";
+"<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><meta name=\"viewport\"content=\"width=device-width, initial-scale=1.0\"><meta http-equiv=\"X-UA-Compatible\"content=\"ie=edge\"><title>配网页面</title><style>*{box-sizing:border-box}body{font-family:Arial;margin:0}.header{height:100vh;padding:80px;text-align:center;background:#1a83bc;color:white}label{display:inline-block;width:80px;text-align:justify;text-align-last:justify}.button{background-color:#1a83bc;border:2px solid#FFFFFF;height:50px;width:200px;justify-content:center;align-items:center;font-size:23px;border-radius:8px;color:#FFFFFF}.header h1{font-size:40px}</style></head><body><div class=\"header\"><h1>欢迎使用智能插座</h1><form name=\"my\">WiFi名称：<p><input type=\"text\"name=\"s\"placeholder=\"请输入您WiFi的名称\"id=\"aa\"><br>WiFi密码：<p></p><input type=\"text\"name=\"p\"placeholder=\"请输入您WiFi的密码\"id=\"bb\"><br><p></p><input class=\"button\"type=\"button\"value=\"连接\"onclick=\"wifi()\"></form><p></p><a href=\"https://github.com/CuiYao631\">小崔搞科技出品</a></div><script language=\"javascript\">function wifi(){var ssid=my.s.value;var password=bb.value;var xmlhttp=new XMLHttpRequest();xmlhttp.open(\"GET\",\"/HandleVal?ssid=\"+ssid+\"&password=\"+password,true);xmlhttp.send()}</script></body></html>";
+
 /*****************************************************
  * 函数名称：handleRoot()
  * 函数说明：客户端请求回调函数
@@ -41,7 +42,6 @@ void HandleVal()
  * 参数说明：无
 ******************************************************/
 void handleNotFound() {
-  digitalWrite(LED_BUILTIN, 0);
   String message = "File Not Found\n\n";
   message += "URI: ";
   message += server.uri();
@@ -54,7 +54,6 @@ void handleNotFound() {
     message += " " + server.argName(i) + ": " + server.arg(i) + "\n";
   }
   server.send(404, "text/plain", message);
-  digitalWrite(LED_BUILTIN, 1);
 }
 /*****************************************************
  * 函数名称：autoConfig()
@@ -81,11 +80,9 @@ bool autoConfig()
     else
     {
       Serial.print(".");
-      LED_Flag = !LED_Flag;
-      if(LED_Flag)
-          digitalWrite(LED_BUILTIN, HIGH);
-      else
-          digitalWrite(LED_BUILTIN, LOW); 
+//      LED_Flag = !LED_Flag;
+//      if(LED_Flag)
+//      else
       delay(500);
     }
   }
@@ -101,7 +98,6 @@ bool autoConfig()
 void htmlConfig()
 {
     WiFi.mode(WIFI_AP_STA);//设置模式为AP+STA
-    digitalWrite(LED_BUILTIN, LOW);
     WiFi.softAP(ssid, password);
     Serial.println("AP设置完成");
     
@@ -136,7 +132,6 @@ void htmlConfig()
 
 void wifi_connect() {
     pinMode(LED_BUILTIN, OUTPUT);
-    digitalWrite(LED_BUILTIN, HIGH);
     Serial.begin(115200);
     
     bool wifiConfig = autoConfig();
