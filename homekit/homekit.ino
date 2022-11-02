@@ -1,11 +1,13 @@
 /*
- HomeKit + Bilnker WIFI 控制插座
- 支持小爱同学控制和苹果 HomeKit 控制 
-
-
- Bilnker 和 巴发云 考虑接入一个！
-*/
-
+ * @Author: CuiYao 
+ * @Date: 2022-11-02 10:42:53 
+ * @Last Modified by: CuiYao
+ * @Last Modified time: 2022-11-02 10:47:56
+ * 
+ * HomeKit 原生模块直接通过扫码添加
+ * 问   题：由于sep8266 只能连接2.4G 网络，会出现手机端无响应情况
+ * 解决方法：配合 HomeAssistent 将模块添加到HomeAssistent中
+ */
 
 #include <Arduino.h>
 #include <arduino_homekit_server.h>

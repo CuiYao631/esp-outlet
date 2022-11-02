@@ -1,10 +1,15 @@
 /*
-* 智能语言控制控制，支持同时天猫、小爱、小度、google Assistent控制
-* 也同时支持web控制、小程序控制、app控制，定时控制等
-* QQ群：566565915
-* 项目示例：通过发送on或off控制开关
-* 官网：bemfa.com
-*/
+ * @Author: CuiYao 
+ * @Date: 2022-11-02 10:35:48 
+ * @Last Modified by: CuiYao
+ * @Last Modified time: 2022-11-02 10:37:27
+ * 
+ * 智能语言控制控制，支持同时天猫、小爱、小度、google HomeAssistent控制
+ * 也同时支持web控制、小程序控制、app控制，定时控制等
+ * 项目示例：通过发送on或off控制开关
+ * 官网：bemfa.com
+ */
+
 #include <Adafruit_NeoPixel.h>
 #include <EasyButton.h>
 #include <ESP8266WiFi.h>   //默认，加载WIFI头文件
