@@ -13,13 +13,15 @@
 #include <Adafruit_NeoPixel.h>
 #include <EasyButton.h>
 #include <ESP8266WiFi.h>   //默认，加载WIFI头文件
+#include <ESP8266httpUpdate.h>
 #include "PubSubClient.h"  //默认，加载MQTT库文件
 #include "wifi_info.h"     //默认, 加载WIFI文件
 
 //********************需要修改的部分*******************//
 #define ID_MQTT "9c11b5ce8d9925cf93d4a2e6023039d9"  //用户私钥，控制台获取
-const char* topic = "outlet001";                    //主题名字，可在巴法云控制台自行创建，名称随意
+const char* topic = "outlet01001";                    //主题名字，可在巴法云控制台自行创建，名称随意
 const int B_led = 2;                                //单片机LED引脚值，D系列是NodeMcu引脚命名方式，其他esp8266型号将D2改为自己的引脚
+String upUrl = "http://bin.bemfa.com/b/1BcOWMxMWI1Y2U4ZDk5MjVjZjkzZDRhMmU2MDIzMDM5ZDk=outlet01001.bin";
 //**************************************************//
 
 const char* mqtt_server = "bemfa.com";  //默认，MQTT服务器
@@ -51,8 +53,12 @@ void onPressed() {
 }
 // 长按事件函数
 void onPressedForDuration() {
-  Serial.println("ClearWiFi!");
-  WiFi.begin("000000", "000000");
+
+  //OTA
+  Serial.println("start update");    
+  updateBin(); 
+  // Serial.println("ClearWiFi!");
+  // WiFi.begin("000000", "000000");
 }
 
 /*
@@ -80,11 +86,13 @@ void sendtoTCPServer(String p) {
 //打开灯泡
 void turnOnLed() {
   Serial.println("on");
+  Serial.println("test_OTA_ON");
   digitalWrite(B_led, LOW);
 }
 //关闭灯泡
 void turnOffLed() {
   Serial.println("off");
+  Serial.println("test_OTA_OFF");
   digitalWrite(B_led, HIGH);
 }
 
@@ -127,12 +135,60 @@ void reconnect() {
 }
 
 
+//当升级开始时，打印日志
+void update_started() {
+  Serial.println("CALLBACK:  HTTP update process started");
+}
+
+//当升级结束时，打印日志
+void update_finished() {
+  Serial.println("CALLBACK:  HTTP update process finished");
+}
+
+//当升级中，打印日志
+void update_progress(int cur, int total) {
+  Serial.printf("CALLBACK:  HTTP update process at %d of %d bytes...\n", cur, total);
+}
+
+//当升级失败时，打印日志
+void update_error(int err) {
+  Serial.printf("CALLBACK:  HTTP update fatal error code %d\n", err);
+}
+
+
+/**
+ * 固件升级函数
+ * 在需要升级的地方，加上这个函数即可，例如setup中加的updateBin(); 
+ * 原理：通过http请求获取远程固件，实现升级
+ */
+void updateBin(){
+  WiFiClient UpdateClient;
+  ESPhttpUpdate.onStart(update_started);//当升级开始时
+  ESPhttpUpdate.onEnd(update_finished); //当升级结束时
+  ESPhttpUpdate.onProgress(update_progress); //当升级中
+  ESPhttpUpdate.onError(update_error); //当升级失败时
+  
+  t_httpUpdate_return ret = ESPhttpUpdate.update(UpdateClient, upUrl);
+  switch(ret) {
+    case HTTP_UPDATE_FAILED:      //当升级失败
+        Serial.println("[update] Update failed.");
+        break;
+    case HTTP_UPDATE_NO_UPDATES:  //当无升级
+        Serial.println("[update] Update no Update.");
+        break;
+    case HTTP_UPDATE_OK:         //当升级成功
+        Serial.println("[update] Update ok.");
+        break;
+  }
+}
+
 void setup() {
   pinMode(B_led, OUTPUT);     //设置引脚为输出模式
   digitalWrite(B_led, HIGH);  //默认引脚上电高电平
   Serial.begin(115200);
   //初始化指示灯为黄色
   wifi_connect();
+
   client.setServer(mqtt_server, mqtt_server_port);  //设置mqtt服务器
   client.setCallback(callback);                     //mqtt消息处理
   //定义按键单按事件回调
