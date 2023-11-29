@@ -8,15 +8,12 @@
 
 #define BLINKER_WIFI
 #define BLINKER_MIOT_OUTLET  //支持小爱开关插座
-#include <Adafruit_NeoPixel.h>
 #include <Blinker.h>
 #include <EasyButton.h>
 #include <BGWiFiConfig.h>
 #include "wifi_info.h"
 #define LED 2         //板子上的灯
 #define BUTTON_PIN 0  //Button PIN
-#define PIN 3  //  DIN PIN (GPIO15, D8)
-#define NUMPIXELS 1 // LED个数
 
 int duration = 2000;  //长按触发时间
 int inputValue = 0;
@@ -26,7 +23,6 @@ bool wsState;         //小爱反馈的状态
 BGWiFiConfig wifipw;  //声明BGWiFiConfig
 EasyButton button(BUTTON_PIN);  //声明按钮
 BlinkerButton Button1("btn-abc");  // 新建blinker组件对象、注意：要和APP组件’数据键名’一致
-Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
 
 /*
   按下BlinkerAPP按键即会执行该函数
@@ -48,7 +44,6 @@ void button1_callback(const String& state) {
  * 更新反馈状态为ON
  */
 void updateStateForON() {
-  SET_RGB(0,255,0,50);
   Serial.println("on");          //串口打印状态
   Button1.print("on");           //反馈按键状态
   BlinkerMIOT.powerState("on");  //向小爱反馈电源状态
@@ -59,7 +54,6 @@ void updateStateForON() {
  * 更新反馈状态为OFF
  */
 void updateStateForOFF() {
-  SET_RGB(255,0,0,50);
   Serial.println("off");          //串口打印状态
   Button1.print("off");           //反馈按键状态
   BlinkerMIOT.powerState("off");  //向小爱反馈电源状态
@@ -137,27 +131,15 @@ void onPressedForDuration() {
   wifipw.clearWiFi();
 }
 
-/*
- *设置状态指示灯
- */
-void SET_RGB(int R,int G,int B,int bright)
-{
-    for (uint16_t i = 0; i < NUMPIXELS; i++) //把灯条变色
-    {
-        pixels.setPixelColor(i,R,G,B);
-    }
-    pixels.setBrightness(bright);//亮度
-    pixels.show();    //送出显示
-}
 
 /*
    初始化WiFI
 */
 void initWifi() {
-  wifipw.offConnectWiFi(true);
-  wifipw.setZDYhtml(Html);
-  wifipw.setZDYhtmlret(Htmlret);
-  wifipw.setNumUMSG(1);
+  wifipw.setWiFiTimeOut(40);//配网超时时间
+  wifipw.autoStart(true);//配网信息写入后自动重启配置
+  wifipw.setZDYhtml(Html);//自定配网页面
+  wifipw.setZDYhtmlret(Htmlret);//自定义配网完成页面
   wifipw.begin();
 }
 
@@ -177,7 +159,7 @@ void initBlinker() {
     //初始化IO
     pinMode(LED, OUTPUT);
     //连接wifi
-    Blinker.begin(wifipw.readUMSG(1).c_str(), wifipw.readWiFi(0).c_str(), wifipw.readWiFi(1).c_str());
+    Blinker.begin("45d9bf644ae4", wifipw.readWiFi(0).c_str(), wifipw.readWiFi(1).c_str());
     //注册读取状态事件
     Blinker.attachData(dataRead);
     //注册按钮
@@ -196,10 +178,6 @@ void initBlinker() {
 void setup() {
   // 初始化串口，并开启调试信息，调试用可以删除
   Serial.begin(115200);
-  pixels.begin();//WS2812初始化
-  pixels.show();
-  //初始化指示灯为黄色
-  SET_RGB(220,119,0,100);
   //初始化WIFI
   initWifi();
   //初始化Blinker
@@ -214,16 +192,11 @@ void setup() {
 */
 void loop() {
   wifipw.Loop();
-  if (wifipw.OK()){
+  if (wifipw.OK())
     Blinker.run();
     // 持续更新按钮状态。
     button.read();
-  }else{
-    delay(500);
-    SET_RGB(0,255,0,50);
-    delay(500);
-    SET_RGB(255,0,0,50);
-  }
+  
 
   
   

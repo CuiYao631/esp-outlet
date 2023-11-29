@@ -10,33 +10,33 @@
  * 官网：bemfa.com
  */
 
-#include <Adafruit_NeoPixel.h>
-#include <EasyButton.h>
+#include <EasyButton.h> 
 #include <ESP8266WiFi.h>   //默认，加载WIFI头文件
+#include <Ticker.h>
 #include <ESP8266httpUpdate.h>
 #include "PubSubClient.h"  //默认，加载MQTT库文件
 #include "wifi_info.h"     //默认, 加载WIFI文件
 
 //********************需要修改的部分*******************//
-#define ID_MQTT "9c11b5ce8d9925cf93d4a2e6023039d9"  //用户私钥，控制台获取
-const char* topic = "outlet01001";                    //主题名字，可在巴法云控制台自行创建，名称随意
-const int B_led = 2;                                //单片机LED引脚值，D系列是NodeMcu引脚命名方式，其他esp8266型号将D2改为自己的引脚
+#define ID_MQTT "9c11b5ce8d9925cf93d4a2e6023039d9"    // 用户私钥，控制台获取
+const char* topic = "LED002";                    // 主题名字，可在巴法云控制台自行创建，名称随意
+const int B_led = 2;                                  // 单片机LED引脚值，D系列是NodeMcu引脚命名方式，其他esp8266型号将D2改为自己的引脚
 String upUrl = "http://bin.bemfa.com/b/1BcOWMxMWI1Y2U4ZDk5MjVjZjkzZDRhMmU2MDIzMDM5ZDk=outlet01001.bin";
 //**************************************************//
 
 const char* mqtt_server = "bemfa.com";  //默认，MQTT服务器
 const int mqtt_server_port = 9501;      //默认，MQTT服务器
 
-#define LED 2         //板子上的灯
-#define BUTTON_PIN 0  //Button PIN
+#define LED 2         // 板子上的灯
+#define BUTTON_PIN 0  // Button PIN
 
-int duration = 2000;  //长按触发时间
-int inputValue = 0;
+int duration = 2000;  // 长按触发时间
+int inputValue = 0;   // LED电平状态
 
-
-WiFiClient espClient;
-PubSubClient client(espClient);
-EasyButton button(BUTTON_PIN);  //声明按钮
+Ticker ticker;                  // 声明定时器
+WiFiClient espClient;           // 声明wifi
+PubSubClient client(espClient); // 声明mMQTT库
+EasyButton button(BUTTON_PIN);  // 声明按钮
 
 
 // 单按事件函数
@@ -55,10 +55,10 @@ void onPressed() {
 void onPressedForDuration() {
 
   //OTA
-  Serial.println("start update");    
-  updateBin(); 
-  // Serial.println("ClearWiFi!");
-  // WiFi.begin("000000", "000000");
+  // Serial.println("start update");    
+  // updateBin(); 
+  Serial.println("ClearWiFi!");
+  WiFi.begin("000000", "000000");
 }
 
 /*
@@ -85,14 +85,10 @@ void sendtoTCPServer(String p) {
 
 //打开灯泡
 void turnOnLed() {
-  Serial.println("on");
-  Serial.println("test_OTA_ON");
   digitalWrite(B_led, LOW);
 }
 //关闭灯泡
 void turnOffLed() {
-  Serial.println("off");
-  Serial.println("test_OTA_OFF");
   digitalWrite(B_led, HIGH);
 }
 
@@ -183,22 +179,22 @@ void updateBin(){
 }
 
 void setup() {
-  pinMode(B_led, OUTPUT);     //设置引脚为输出模式
-  digitalWrite(B_led, HIGH);  //默认引脚上电高电平
-  Serial.begin(115200);
-  //初始化指示灯为黄色
-  wifi_connect();
-
-  client.setServer(mqtt_server, mqtt_server_port);  //设置mqtt服务器
-  client.setCallback(callback);                     //mqtt消息处理
-  //定义按键单按事件回调
-  button.onPressed(onPressed);
-  //定义按键长按事件回调
-  button.onPressedFor(duration, onPressedForDuration);
+  pinMode(B_led, OUTPUT);                               // 设置引脚为输出模式
+  digitalWrite(B_led, HIGH);                            // 默认引脚上电高电平
+  Serial.begin(115200);                                 // 初始化串口日志
+  ticker.attach(0.1, buttonRead);                       // 定时器
+  wifi_connect();                                       // 初始化wifi
+  client.setServer(mqtt_server, mqtt_server_port);      // 设置mqtt服务器
+  client.setCallback(callback);                         // mqtt消息处理
+  button.onPressed(onPressed);                          // 定义按键单按事件回调
+  button.onPressedFor(duration, onPressedForDuration);  // 定义按键长按事件回调
+}
+// 检测按键状态
+void buttonRead()
+{
+  button.read();
 }
 void loop() {
-  // 持续更新按钮状态。
-  button.read();
   if (!client.connected()) {
     reconnect();
   }
